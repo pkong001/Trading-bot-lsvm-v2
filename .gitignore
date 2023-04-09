@@ -1,3 +1,8 @@
+# my ignore
+account_credentials.py
+vbot2/
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

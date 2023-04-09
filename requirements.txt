@@ -1,0 +1,8 @@
+MetaTrader5
+pandas
+datetime
+plotly
+requests
+ipykernel
+scikit-learn==1.2.2
+numpy==1.24.2
