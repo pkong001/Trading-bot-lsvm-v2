@@ -236,7 +236,7 @@ while True:
             logging.info('prediction_long: {0}'.format(prediction_long))
             prediction_short = int(lsvm_short.predict(data_scaled))
             logging.info('prediction_short: {0}'.format(prediction_long))
-            print('xx')
+            print('show the prediction')
             print(prediction_long)
             print(prediction_short)
 
