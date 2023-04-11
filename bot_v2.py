@@ -236,6 +236,9 @@ while True:
             logging.info('prediction_long: {0}'.format(prediction_long))
             prediction_short = int(lsvm_short.predict(data_scaled))
             logging.info('prediction_short: {0}'.format(prediction_long))
+            print('xx')
+            print(prediction_long)
+            print(prediction_short)
 
             if prediction_long == 1 and prediction_short == 1:
                 time.sleep(1)
@@ -262,7 +265,7 @@ while True:
                     else:
                         "Sending order is not successful"
             
-            if prediction_long == 1 and prediction_short == 0:
+            if prediction_long == 0 and prediction_short == 1:
                 if abs(price_data[4] - current_candle[4]) > deviation_delayed_trade:
                     logging.info("<<SHORT>> Deviation = {0} >>> No Trade, close price is out of deviation, wait for completed candle in the next hour".format((price_data[4] - current_candle[4])))
                 elif abs(price_data[4] - current_candle[4]) <= deviation_delayed_trade:
@@ -284,6 +287,7 @@ while True:
                     else:
                         "Sending order is not successful"
             if prediction_long == 0 and prediction_short == 0:
+                print('condition 00 ')
                 new_row = pd.DataFrame({'time_records':[time_trade],
                                                 'open':[open],
                                                 'high':[high],
