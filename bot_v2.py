@@ -4,10 +4,10 @@ import time
 from datetime import datetime
 from account_credentials import LOGIN, PASSWORD, SERVER
 import plotly.express as px
-import requests
 import logging
 import pickle
 import warnings
+import numpy as np
 
 # To ignore error on sklearn version, which proved irrelevant
 with warnings.catch_warnings():
@@ -138,18 +138,18 @@ spread = .125
 deviation_delayed_trade = 0.300 #abs(current close price - previous complete close price) for example |1900.000 -1901.111| = 1.111
 num_positions_max = 5
 
-if __name__ == '__main__':
-    is_initialized = mt5.initialize()
-    print('initialize: ', is_initialized)
 
-    is_logged_in = mt5.login(LOGIN, PASSWORD, SERVER)
-    print('logged in: ', is_logged_in)
-    print('\n')
-    account_info = mt5.account_info()
-    print(datetime.now(),
-        '| Login: ', account_info.login,
-        '| Balance: ', account_info.balance,
-        '| Equity: ' , account_info.equity)
+is_initialized = mt5.initialize()
+print('initialize: ', is_initialized)
+
+is_logged_in = mt5.login(LOGIN, PASSWORD, SERVER)
+print('logged in: ', is_logged_in)
+print('\n')
+account_info = mt5.account_info()
+print(datetime.now(),
+    '| Login: ', account_info.login,
+    '| Balance: ', account_info.balance,
+    '| Equity: ' , account_info.equity)
 
 #### RUN ONCE TO CREATE A RECORD.CSV FILE
 try:
@@ -198,7 +198,7 @@ while True:
         
         logging.debug("Complete candle >> Time: {0}, Open: {1}, High: {2}, Low: {3}, Close: {4}".format(time_trade,price_data[1],price_data[2],price_data[3],price_data[4]))
         logging.debug("Current candle >> Time: {0}, Open: {1}, High: {2}, Low: {3}, Close: \033[1m{4}\033[0m".format(datetime.fromtimestamp(current_candle[0]),current_candle[1],current_candle[2],current_candle[3],current_candle[4]))
-        logging.debug("\033[1mLastest Record Time: {0}\033[0m ||| \033[1mLastest Record Prediction {1}\033[0m".format(str(time_records['time_records'].tail(1)),int(time_records['prediction'].tail(1))))
+        logging.debug("\033[1mLastest Record Time: {0}\033[0m ||| \033[1mLastest Prediction_L {1}\033[0m ||| \033[1mLastest Prediction_L {2}\033[0m".format(str(time_records['time_records'].tail(1)),int(time_records['prediction'].tail(1).iloc[0]),int(time_records['prediction_s'].tail(1).iloc[0])))
         # HW logging price here
 
         # Adjust time_trade format
@@ -226,64 +226,75 @@ while True:
             print("It's in the recorded")
             #print(rounded_time_trade)
 
+        # Prepare data for model to predict
+        data_raw = np.array([[open, high, low, close]]) # use this np.array instead of reshape
+        data_scaled = scaler.transform(data_raw)
+
         ### Model LSVM BUY----------------------------------------------------------------
         if (rounded_time_trade not in rounded_time_records.values) and (num_positions <= 5):
-            url = "http://127.0.0.1:5000/predict_api"
+            prediction_long = int(lsvm_long.predict(data_scaled))
+            logging.info('prediction_long: {0}'.format(prediction_long))
+            prediction_short = int(lsvm_short.predict(data_scaled))
+            logging.info('prediction_short: {0}'.format(prediction_long))
 
-            data = {
-                "data": {
-                    "open": open,
-                    "high": high,
-                    "low": low,
-                    "close": close
-                }
-            }
-
-            try:
-                response = requests.post(url, json=data)
-            except:
-                logging.info("Cannot Reach ML Server, Aborting the bot")
-                break
-
-            if response.status_code == 200:
-                prediction = response.json()
-                logging.info('prediction: {0}'.format(prediction))
-            else:
-                logging.info("POST request failed!")
-                logging.info(response.status_code)
-
-            if prediction == 1:
+            if prediction_long == 1 and prediction_short == 1:
+                time.sleep(1)
+                continue
+            if prediction_long == 1 and prediction_short == 0:
                 if abs(price_data[4] - current_candle[4]) > deviation_delayed_trade:
-                    logging.info("Deviation = {0} >>> No Trade, close price is out of deviation, wait for completed candle in the next hour".format((price_data[4] - current_candle[4])))
+                    logging.info("<<LONG>> Deviation = {0} >>> No Trade, close price is out of deviation, wait for completed candle in the next hour".format((price_data[4] - current_candle[4])))
                 elif abs(price_data[4] - current_candle[4]) <= deviation_delayed_trade:
                     order_result = market_order(symbol, volume, 'buy')
                     if order_result.retcode == mt5.TRADE_RETCODE_DONE: # check if trading order is successful
-                        logging.info("Deviation = {0} >>> Made a trade at: {1}".format(abs(price_data[4] - current_candle[4]), time_trade))
+                        logging.info("<<LONG>> Deviation = {0} >>> Made a trade at: {1}".format(abs(price_data[4] - current_candle[4]), time_trade))
                         new_row = pd.DataFrame({'time_records':[time_trade],
                                                 'open':[open],
                                                 'high':[high],
                                                 'low':[low],
                                                 'close':[close],
-                                                'prediction':[prediction],
+                                                'prediction':[prediction_long],
                                                 'ticket':[order_result.order],
-                                                'order price':[order_result[4]]})
+                                                'order price':[order_result[4]],
+                                                'prediction_s':[prediction_short]})
                         time_records = pd.concat([time_records, new_row], axis=0) # love .append T.T
-                        time_records.to_csv('time_records.csv', index = False) # record traded order by timestamp
+                        time_records.to_csv('time_records_v2.csv', index = False) # record traded order by timestamp
                         #HW RECORD OPEN HIGH LOW CLOSE, PREDICTION TO CS
                     else:
                         "Sending order is not successful"
             
-            if prediction == 0:
+            if prediction_long == 1 and prediction_short == 0:
+                if abs(price_data[4] - current_candle[4]) > deviation_delayed_trade:
+                    logging.info("<<SHORT>> Deviation = {0} >>> No Trade, close price is out of deviation, wait for completed candle in the next hour".format((price_data[4] - current_candle[4])))
+                elif abs(price_data[4] - current_candle[4]) <= deviation_delayed_trade:
+                    order_result = market_order(symbol, volume, 'sell')
+                    if order_result.retcode == mt5.TRADE_RETCODE_DONE: # check if trading order is successful
+                        logging.info("<<SHORT>> Deviation = {0} >>> Made a trade at: {1}".format(abs(price_data[4] - current_candle[4]), time_trade))
+                        new_row = pd.DataFrame({'time_records':[time_trade],
+                                                'open':[open],
+                                                'high':[high],
+                                                'low':[low],
+                                                'close':[close],
+                                                'prediction':[prediction_long],
+                                                'ticket':[order_result.order],
+                                                'order price':[order_result[4]],
+                                                'prediction_s':[prediction_short]})
+                        time_records = pd.concat([time_records, new_row], axis=0) # love .append T.T
+                        time_records.to_csv('time_records_v2.csv', index = False) # record traded order by timestamp
+                        #HW RECORD OPEN HIGH LOW CLOSE, PREDICTION TO CS
+                    else:
+                        "Sending order is not successful"
+            if prediction_long == 0 and prediction_short == 0:
                 new_row = pd.DataFrame({'time_records':[time_trade],
                                                 'open':[open],
                                                 'high':[high],
                                                 'low':[low],
                                                 'close':[close],
-                                                'prediction':[prediction],
+                                                'prediction':[prediction_long],
                                                 'ticket':['none'],
-                                                'order price':['none']})
+                                                'order price':['none'],
+                                                'prediction_s':[prediction_short]})
                 time_records = pd.concat([time_records, new_row], axis=0)
-                time_records.to_csv('time_records.csv', index = False)
+                time_records.to_csv('time_records_v2.csv', index = False)
                 pass
             ### ---------------------------------------------------------------------------------
 
@@ -297,3 +308,4 @@ while True:
         time.sleep(1)
     else:
         raise ValueError('Failed on Checking market status')
+
