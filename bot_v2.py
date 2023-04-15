@@ -128,6 +128,13 @@ def close_positions(order_type):
 
             logging.info('order_result: ', order_result)
 
+# Make change to the repository so we don't get an error when define commiting line
+import sys
+sys.path.insert(0,'current_time')
+from create_current_time import get_current_time
+get_current_time()
+
+
 # To run this function you have to work in the correct directory of git bash
 def get_go():
     # Run git status command
