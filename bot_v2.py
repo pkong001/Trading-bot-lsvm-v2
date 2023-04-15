@@ -8,6 +8,7 @@ import logging
 import pickle
 import warnings
 import numpy as np
+import subprocess
 
 # To ignore error on sklearn version, which proved irrelevant
 with warnings.catch_warnings():
@@ -127,6 +128,29 @@ def close_positions(order_type):
 
             logging.info('order_result: ', order_result)
 
+# To run this function you have to work in the correct directory of git bash
+def get_go():
+    # Run git status command
+    check_status = subprocess.check_output(['git', 'status'], stderr=subprocess.STDOUT)
+    # Display the output of the Git status command
+    print(check_status.decode())
+
+    # Add all changes to the Git staging area
+    subprocess.call(['git', 'add', '-A'])
+
+    # Commit the changes with a commit message
+    commit_msg = 'Updated at {timestamp}'.format(timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    print(commit_msg)
+    commit_output = subprocess.check_output(['git', 'commit', '-m', commit_msg], stderr=subprocess.STDOUT)
+
+    # Display the output of the Git commit command
+    print(commit_output.decode())
+
+    # Push the changes to the remote repository
+    push_output = subprocess.check_output(['git', 'push', 'origin', 'main'], stderr=subprocess.STDOUT)
+
+    # Display the output of the Git push command
+    print(push_output.decode())
 
 symbol = 'XAUUSD'
 timeframe = mt5.TIMEFRAME_H1
@@ -241,8 +265,7 @@ while True:
             print(prediction_short)
 
             if prediction_long == 1 and prediction_short == 1:
-                time.sleep(1)
-                continue
+                pass
             if prediction_long == 1 and prediction_short == 0:
                 if abs(price_data[4] - current_candle[4]) > deviation_delayed_trade:
                     logging.info("<<LONG>> Deviation = {0} >>> No Trade, close price is out of deviation, wait for completed candle in the next hour".format((price_data[4] - current_candle[4])))
@@ -309,7 +332,26 @@ while True:
         ###HW ใส่ elif ว่า record แล้ว( if in time_records) แล้ว len ดู ข้อมูลตัวสุดท้ายใน df ว่า prediction เป็นเท่าไร แบบว่า ชั่วโมงนี้ predict ไปแล้วนะเว้ย ซึง เท่ากับ 1 หรือ 0 ก็ว่าไป
             #CODE HERE
 
-        time.sleep(1)
+    
     else:
         raise ValueError('Failed on Checking market status')
+    
+
+    # This will push to git main every "running_count" loop
+    running_count = 0
+    if (running_count % 1800) == 0:
+        get_go()
+        print('pushed to git')
+    running_count += 1
+
+
+    time.sleep(1)
+        
+
+
+
+
+
+
+
 
