@@ -182,6 +182,7 @@ print(datetime.now(),
     '| Balance: ', account_info.balance,
     '| Equity: ' , account_info.equity)
 
+print("Bot version v2")
 #### RUN ONCE TO CREATE A RECORD.CSV FILE
 try:
     time_records = pd.read_csv('time_records_v2.csv')
@@ -207,7 +208,6 @@ logging.debug('Running')
 running_count = 1
 while True:
 
-    print()
     num_positions = mt5.positions_total()
     current_time = mt5.copy_rates_from_pos(symbol,mt5.TIMEFRAME_M1,0,1)
     current_time = datetime.fromtimestamp(current_time[0][0])
@@ -341,7 +341,6 @@ while True:
         get_go()
         print('pushed to git')
     running_count += 1
-    print(running_count)
 
 
     time.sleep(1)

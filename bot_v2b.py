@@ -13,18 +13,19 @@ import subprocess
 # To ignore error on sklearn version, which proved irrelevant
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
-    lsvm_long = pickle.load(open('lsvm_xauusd_long.pkl','rb'))
-    lsvm_short = pickle.load(open('lsvm_xauusd_short.pkl','rb'))
+    lsvm_long = pickle.load(open('lsvm_xauusd_long_b.pkl','rb'))
+    lsvm_short = pickle.load(open('lsvm_xauusd_short_b.pkl','rb'))
 
 # import Scaler
+# The scaler for long and short a train on the same data interval so we can use just one of them.
 from joblib import load
-scaler = load('scaler_long.pkl')
+scaler = load('scaler_long_b.pkl')
 
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s %(levelname)s %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
-    handlers=[logging.FileHandler('bot_log.log', mode='a'), logging.StreamHandler()]
+    handlers=[logging.FileHandler('bot_log_b.log', mode='a'), logging.StreamHandler()]
 )
 
 # Get the logger instance
@@ -80,7 +81,7 @@ def market_order(symbol, volume, order_type, deviation=0, magic=123992):
     return(order_result)
 
 
-def close_position(position, deviation=0, magic=123992):
+def close_position(position, deviation=0, magic=123993):
 
     order_type_dict = {
         0: mt5.ORDER_TYPE_SELL,
@@ -128,41 +129,10 @@ def close_positions(order_type):
 
             logging.info('order_result: ', order_result)
 
-# Make change to the repository so we don't get an error when define commiting line
-import sys
-sys.path.insert(0,'current_time')
-from create_current_time import get_current_time
-get_current_time()
-
-
-# To run this function you have to work in the correct directory of git bash
-def get_go():
-    # Run git status command
-    check_status = subprocess.check_output(['git', 'status'], stderr=subprocess.STDOUT)
-    # Display the output of the Git status command
-    print(check_status.decode())
-
-    # Add all changes to the Git staging area
-    subprocess.call(['git', 'add', '-A'])
-
-    # Commit the changes with a commit message
-    commit_msg = 'Updated at {timestamp}'.format(timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-    print(commit_msg)
-    commit_output = subprocess.check_output(['git', 'commit', '-m', commit_msg], stderr=subprocess.STDOUT)
-
-    # Display the output of the Git commit command
-    print(commit_output.decode())
-
-    # Push the changes to the remote repository
-    push_output = subprocess.check_output(['git', 'push', 'origin', 'main'], stderr=subprocess.STDOUT)
-
-    # Display the output of the Git push command
-    print(push_output.decode())
-
 symbol = 'XAUUSD'
 timeframe = mt5.TIMEFRAME_H1
 volume = 0.01
-strategy_name = 'ML_lsvm'
+strategy_name = 'ML_lsvm_short_b'
 sl_price_range = 3
 tp_price_range = 3
 spread = .125
@@ -182,9 +152,11 @@ print(datetime.now(),
     '| Balance: ', account_info.balance,
     '| Equity: ' , account_info.equity)
 
+print("Bot version v2b")
+
 #### RUN ONCE TO CREATE A RECORD.CSV FILE
 try:
-    time_records = pd.read_csv('time_records_v2.csv')
+    time_records = pd.read_csv('time_records_v2b.csv')
     logging.debug('Your already have a time_records file: CONTINUE')
 except:
     price_data = mt5.copy_rates_from_pos(symbol, timeframe, 0, 2)[0]
@@ -196,18 +168,14 @@ except:
 
     time_records = [time_trade]
     records_df = pd.DataFrame({'time_records': time_records})
-    records_df.to_csv('time_records_v2.csv', index = False)
+    records_df.to_csv('time_records_v2b.csv', index = False)
     logging.debug('Created a time_records file')
 
 time.sleep(2) # wait for server to start
 logging.debug('Running')
 
-# Define some variable before while loop begin
-    #This is for pushing go github
-running_count = 1
 while True:
 
-    print()
     num_positions = mt5.positions_total()
     current_time = mt5.copy_rates_from_pos(symbol,mt5.TIMEFRAME_M1,0,1)
     current_time = datetime.fromtimestamp(current_time[0][0])
@@ -292,7 +260,7 @@ while True:
                                                 'order price':[order_result[4]],
                                                 'prediction_s':[prediction_short]})
                         time_records = pd.concat([time_records, new_row], axis=0) # love .append T.T
-                        time_records.to_csv('time_records_v2.csv', index = False) # record traded order by timestamp
+                        time_records.to_csv('time_records_v2b.csv', index = False) # record traded order by timestamp
                         #HW RECORD OPEN HIGH LOW CLOSE, PREDICTION TO CS
                     else:
                         "Sending order is not successful"
@@ -314,7 +282,7 @@ while True:
                                                 'order price':[order_result[4]],
                                                 'prediction_s':[prediction_short]})
                         time_records = pd.concat([time_records, new_row], axis=0) # love .append T.T
-                        time_records.to_csv('time_records_v2.csv', index = False) # record traded order by timestamp
+                        time_records.to_csv('time_records_v2b.csv', index = False) # record traded order by timestamp
                         #HW RECORD OPEN HIGH LOW CLOSE, PREDICTION TO CS
                     else:
                         "Sending order is not successful"
@@ -330,18 +298,10 @@ while True:
                                                 'order price':['none'],
                                                 'prediction_s':[prediction_short]})
                 time_records = pd.concat([time_records, new_row], axis=0)
-                time_records.to_csv('time_records_v2.csv', index = False)
+                time_records.to_csv('time_records_v2b.csv', index = False)
                 pass
     else:
         raise ValueError('Failed on Checking market status')
-    
-
-    # This will push to git main every "running_count" loop
-    if (running_count % 3601) == 0:
-        get_go()
-        print('pushed to git')
-    running_count += 1
-    print(running_count)
 
 
     time.sleep(1)
