@@ -177,6 +177,7 @@ logging.debug('Running')
     #Flag for loggin
 log_flag1 = False
 log_flag2 = False
+log_flag3 = False
 while True:
 
     num_positions = mt5.positions_total()
@@ -237,9 +238,11 @@ while True:
         ### Model LSVM BUY----------------------------------------------------------------
         if (rounded_time_trade not in rounded_time_records.values) and (num_positions <= 5):
             prediction_long = int(lsvm_long.predict(data_scaled))
-            logging.info('prediction_long: {0}'.format(prediction_long))
             prediction_short = int(lsvm_short.predict(data_scaled))
-            logging.info('prediction_short: {0}'.format(prediction_long))
+            if not log_flag3:
+                logging.info('prediction_long: {0}'.format(prediction_long))
+                logging.info('prediction_short: {0}'.format(prediction_short))
+                log_flag3 = True
 
             if prediction_long == 1 and prediction_short == 1:
                 print('')
@@ -254,6 +257,7 @@ while True:
                                                 'prediction_s':[prediction_short]})
                 time_records = pd.concat([time_records, new_row], axis=0)
                 time_records.to_csv('time_records_v2b.csv', index = False)
+                log_flag3 = False
             if prediction_long == 1 and prediction_short == 0:
                 if abs(price_data[4] - current_candle[4]) > deviation_delayed_trade:
                     if not log_flag1:
@@ -276,6 +280,7 @@ while True:
                                                 'prediction_s':[prediction_short]})
                         time_records = pd.concat([time_records, new_row], axis=0) # love .append T.T
                         time_records.to_csv('time_records_v2b.csv', index = False) # record traded order by timestamp
+                        log_flag3 = False
                         #HW RECORD OPEN HIGH LOW CLOSE, PREDICTION TO CS
                     else:
                         "Sending order is not successful"
@@ -302,6 +307,7 @@ while True:
                                                 'prediction_s':[prediction_short]})
                         time_records = pd.concat([time_records, new_row], axis=0) # love .append T.T
                         time_records.to_csv('time_records_v2b.csv', index = False) # record traded order by timestamp
+                        log_flag3 = False
                         #HW RECORD OPEN HIGH LOW CLOSE, PREDICTION TO CS
                     else:
                         "Sending order is not successful"
@@ -318,6 +324,7 @@ while True:
                                                 'prediction_s':[prediction_short]})
                 time_records = pd.concat([time_records, new_row], axis=0)
                 time_records.to_csv('time_records_v2b.csv', index = False)
+                log_flag3 = False
     else:
         raise ValueError('Failed on Checking market status')
 
