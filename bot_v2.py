@@ -351,9 +351,9 @@ while True:
     if (running_count % 3601) == 0:
         try:
             get_go()
-            print('pushed to git')
+            logging.info("pushed to git")
         except:
-            print('cannot push')
+            logging.info("cannot push")
     running_count += 1
 
 
