@@ -131,7 +131,7 @@ def close_positions(order_type):
 symbol = 'XAUUSD'
 timeframe = mt5.TIMEFRAME_M5
 volume = 0.01
-strategy_name = 'ML_lsvm'
+strategy_name = 'ML_lsvm_c'
 sl_price_range = 3
 tp_price_range = 3
 spread = .125
@@ -211,7 +211,7 @@ while True:
                 rounded_time_records = time_records['time_records'].dt.round('5min')
             except:
                 time_records['time_records'] = pd.to_datetime(time_records['time_records'], format='%Y-%m-%d %H:%M:%S')
-                rounded_time_records = time_records['time_records'].dt.floor('H')
+                rounded_time_records = time_records['time_records'].dt.round('5min')
 
         # Prepare data for model to predict
         data_raw = np.array([[open, high, low, close]]) # use this np.array instead of reshape
@@ -236,7 +236,7 @@ while True:
                                                 'order price':['none'],
                                                 'prediction_s':[prediction_short]})
                 time_records = pd.concat([time_records, new_row], axis=0)
-                time_records.to_csv('time_records_v2.csv', index = False)
+                time_records.to_csv('time_records_v2c.csv', index = False)
                 pass
             if prediction_long == 1 and prediction_short == 0:
                 if abs(price_data[4] - current_candle[4]) > deviation_delayed_trade:
@@ -259,7 +259,7 @@ while True:
                                                 'order price':[order_result[4]],
                                                 'prediction_s':[prediction_short]})
                         time_records = pd.concat([time_records, new_row], axis=0) # love .append T.T
-                        time_records.to_csv('time_records_v2.csv', index = False) # record traded order by timestamp
+                        time_records.to_csv('time_records_v2c.csv', index = False) # record traded order by timestamp
                         #HW RECORD OPEN HIGH LOW CLOSE, PREDICTION TO CS
                     else:
                         "Sending order is not successful"
@@ -285,7 +285,7 @@ while True:
                                                 'order price':[order_result[4]],
                                                 'prediction_s':[prediction_short]})
                         time_records = pd.concat([time_records, new_row], axis=0) # love .append T.T
-                        time_records.to_csv('time_records_v2.csv', index = False) # record traded order by timestamp
+                        time_records.to_csv('time_records_v2c.csv', index = False) # record traded order by timestamp
                         #HW RECORD OPEN HIGH LOW CLOSE, PREDICTION TO CS
                     else:
                         "Sending order is not successful"
@@ -301,23 +301,12 @@ while True:
                                                 'order price':['none'],
                                                 'prediction_s':[prediction_short]})
                 time_records = pd.concat([time_records, new_row], axis=0)
-                time_records.to_csv('time_records_v2.csv', index = False)
+                time_records.to_csv('time_records_v2c.csv', index = False)
                 pass
     else:
         raise ValueError('Failed on Checking market status')
-    
 
-    # This will push to git main every "running_count" loop
-    if (running_count % 3601) == 0:
-        try:
-            get_go()
-            print('pushed to git')
-        except:
-            print('cannot push')
-    running_count += 1
-
-
-    time.sleep(1)
+    time.sleep(0.5)
         
 
 
