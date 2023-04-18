@@ -174,6 +174,9 @@ except:
 time.sleep(2) # wait for server to start
 logging.debug('Running')
 
+    #Flag for loggin
+log_flag1 = False
+log_flag2 = False
 while True:
 
     num_positions = mt5.positions_total()
@@ -237,16 +240,28 @@ while True:
             logging.info('prediction_long: {0}'.format(prediction_long))
             prediction_short = int(lsvm_short.predict(data_scaled))
             logging.info('prediction_short: {0}'.format(prediction_long))
-            print('show the prediction')
-            print(prediction_long)
-            print(prediction_short)
 
             if prediction_long == 1 and prediction_short == 1:
-                pass
+                print('')
+                new_row = pd.DataFrame({'time_records':[time_trade],
+                                                'open':[open],
+                                                'high':[high],
+                                                'low':[low],
+                                                'close':[close],
+                                                'prediction':[prediction_long],
+                                                'ticket':['none'],
+                                                'order price':['none'],
+                                                'prediction_s':[prediction_short]})
+                time_records = pd.concat([time_records, new_row], axis=0)
+                time_records.to_csv('time_records_v2b.csv', index = False)
             if prediction_long == 1 and prediction_short == 0:
                 if abs(price_data[4] - current_candle[4]) > deviation_delayed_trade:
-                    logging.info("<<LONG>> Deviation = {0} >>> No Trade, close price is out of deviation, wait for completed candle in the next hour".format((price_data[4] - current_candle[4])))
+                    if not log_flag1:
+                        logging.info("<<LONG>> Deviation = {0} >>> No Trade, close price is out of deviation, wait for completed candle in the next hour".format((price_data[4] - current_candle[4])))
+                        log_flag1= True
                 elif abs(price_data[4] - current_candle[4]) <= deviation_delayed_trade:
+                    logging.info("<<LONG>> Deviation = {0} >>> Making a trade".format((price_data[4] - current_candle[4])))
+                    log_flag1 = False
                     order_result = market_order(symbol, volume, 'buy')
                     if order_result.retcode == mt5.TRADE_RETCODE_DONE: # check if trading order is successful
                         logging.info("<<LONG>> Deviation = {0} >>> Made a trade at: {1}".format(abs(price_data[4] - current_candle[4]), time_trade))
@@ -267,8 +282,12 @@ while True:
             
             if prediction_long == 0 and prediction_short == 1:
                 if abs(price_data[4] - current_candle[4]) > deviation_delayed_trade:
-                    logging.info("<<SHORT>> Deviation = {0} >>> No Trade, close price is out of deviation, wait for completed candle in the next hour".format((price_data[4] - current_candle[4])))
+                    if not log_flag2:
+                        logging.info("<<SHORT>> Deviation = {0} >>> No Trade, close price is out of deviation, wait for completed candle in the next hour".format((price_data[4] - current_candle[4])))
+                        log_flag2 = True
                 elif abs(price_data[4] - current_candle[4]) <= deviation_delayed_trade:
+                    logging.info("<<SHORT>> Deviation = {0} >>> Making a trade".format((price_data[4] - current_candle[4])))
+                    log_flag2 = False
                     order_result = market_order(symbol, volume, 'sell')
                     if order_result.retcode == mt5.TRADE_RETCODE_DONE: # check if trading order is successful
                         logging.info("<<SHORT>> Deviation = {0} >>> Made a trade at: {1}".format(abs(price_data[4] - current_candle[4]), time_trade))
@@ -287,7 +306,7 @@ while True:
                     else:
                         "Sending order is not successful"
             if prediction_long == 0 and prediction_short == 0:
-                print('condition 00 ')
+                logging.info("")
                 new_row = pd.DataFrame({'time_records':[time_trade],
                                                 'open':[open],
                                                 'high':[high],
@@ -299,7 +318,6 @@ while True:
                                                 'prediction_s':[prediction_short]})
                 time_records = pd.concat([time_records, new_row], axis=0)
                 time_records.to_csv('time_records_v2b.csv', index = False)
-                pass
     else:
         raise ValueError('Failed on Checking market status')
 

@@ -13,12 +13,12 @@ import subprocess
 # To ignore error on sklearn version, which proved irrelevant
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
-    lsvm_long = pickle.load(open('lsvm_xauusd_long.pkl','rb'))
-    lsvm_short = pickle.load(open('lsvm_xauusd_short.pkl','rb'))
+    lsvm_long = pickle.load(open('lsvm_xauusd_long_c.pkl','rb'))
+    lsvm_short = pickle.load(open('lsvm_xauusd_short_c.pkl','rb'))
 
 # import Scaler
 from joblib import load
-scaler = load('scaler_long.pkl')
+scaler = load('scaler_long_c.pkl')
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -128,45 +128,14 @@ def close_positions(order_type):
 
             logging.info('order_result: ', order_result)
 
-# Make change to the repository so we don't get an error when define commiting line
-import sys
-sys.path.insert(0,'current_time')
-from create_current_time import get_current_time
-get_current_time()
-
-
-# To run this function you have to work in the correct directory of git bash
-def get_go():
-    # Run git status command
-    check_status = subprocess.check_output(['git', 'status'], stderr=subprocess.STDOUT)
-    # Display the output of the Git status command
-    print(check_status.decode())
-
-    # Add all changes to the Git staging area
-    subprocess.call(['git', 'add', '-A'])
-
-    # Commit the changes with a commit message
-    commit_msg = 'Updated at {timestamp}'.format(timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-    print(commit_msg)
-    commit_output = subprocess.check_output(['git', 'commit', '-m', commit_msg], stderr=subprocess.STDOUT)
-
-    # Display the output of the Git commit command
-    print(commit_output.decode())
-
-    # Push the changes to the remote repository
-    push_output = subprocess.check_output(['git', 'push', 'origin', 'main'], stderr=subprocess.STDOUT)
-
-    # Display the output of the Git push command
-    print(push_output.decode())
-
 symbol = 'XAUUSD'
-timeframe = mt5.TIMEFRAME_H1
+timeframe = mt5.TIMEFRAME_M5
 volume = 0.01
 strategy_name = 'ML_lsvm'
 sl_price_range = 3
 tp_price_range = 3
 spread = .125
-deviation_delayed_trade = 0.300 #abs(current close price - previous complete close price) for example |1900.000 -1901.111| = 1.111
+deviation_delayed_trade = 0.150 #abs(current close price - previous complete close price) for example |1900.000 -1901.111| = 1.111
 num_positions_max = 5
 
 
@@ -182,10 +151,10 @@ print(datetime.now(),
     '| Balance: ', account_info.balance,
     '| Equity: ' , account_info.equity)
 
-print("Bot version v2")
+logging.info("Bot version v2c")
 #### RUN ONCE TO CREATE A RECORD.CSV FILE
 try:
-    time_records = pd.read_csv('time_records_v2.csv')
+    time_records = pd.read_csv('time_records_v2c.csv')
     logging.debug('Your already have a time_records file: CONTINUE')
 except:
     price_data = mt5.copy_rates_from_pos(symbol, timeframe, 0, 2)[0]
@@ -197,27 +166,18 @@ except:
 
     time_records = [time_trade]
     records_df = pd.DataFrame({'time_records': time_records})
-    records_df.to_csv('time_records_v2.csv', index = False)
+    records_df.to_csv('time_records_v2c.csv', index = False)
     logging.debug('Created a time_records file')
 
-time.sleep(2) # wait for server to start
+time.sleep(1) # wait for server to start
 logging.debug('Running')
 
-# Define some variable before while loop begin
-    #This is for pushing go github
-running_count = 1
     #Flag for loggin
 log_flag1 = False
 log_flag2 = False
 while True:
 
     num_positions = mt5.positions_total()
-    current_time = mt5.copy_rates_from_pos(symbol,mt5.TIMEFRAME_M1,0,1)
-    current_time = datetime.fromtimestamp(current_time[0][0])
-    # logging.debug('Current Number of Positions: \033[1m{0}\033[0m (max:{1}) ||| Current Time: \033[1m{2}\033[0m'.format(num_positions,num_positions_max,current_time))
-
-
-
     if check_allowed_trading_hours() == False:
         if num_positions > 0:
             close_position('all')
@@ -240,15 +200,15 @@ while True:
         # Adjust time_trade format
         time_trade_str = time_trade.strftime('%Y-%m-%d %H:%M:%S')
         time_trade_ts = pd.Timestamp(time_trade_str)
-        rounded_time_trade = time_trade_ts.floor('H')
+        rounded_time_trade = time_trade_ts.round('5min')
         # Adjust imported time_records format
         try:
             time_records['time_records'] = pd.to_datetime(time_records['time_records'], format='%m/%d/%Y %H:%M')
-            rounded_time_records = time_records['time_records'].dt.floor('H')
+            rounded_time_records = time_records['time_records'].dt.round('5min')
         except:
             try:
                 time_records['time_records'] = pd.to_datetime(time_records['time_records'], format='%Y/%m/%d %H:%M:%S')
-                rounded_time_records = time_records['time_records'].dt.floor('H')
+                rounded_time_records = time_records['time_records'].dt.round('5min')
             except:
                 time_records['time_records'] = pd.to_datetime(time_records['time_records'], format='%Y-%m-%d %H:%M:%S')
                 rounded_time_records = time_records['time_records'].dt.floor('H')
