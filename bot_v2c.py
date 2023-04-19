@@ -41,7 +41,7 @@ def check_allowed_trading_hours():
         #market close
     return market_status
 
-def market_order(symbol, volume, order_type, deviation=0, magic=123992):
+def market_order(symbol, volume, order_type, deviation=0, magic=123993):
 
     order_type_dict = {
         'buy': mt5.ORDER_TYPE_BUY,
