@@ -41,7 +41,7 @@ def check_allowed_trading_hours():
         #market close
     return market_status
 
-def market_order(symbol, volume, order_type, deviation=0, magic=123993):
+def market_order(symbol, volume, order_type, deviation=0, magic=123994):
 
     order_type_dict = {
         'buy': mt5.ORDER_TYPE_BUY,
@@ -80,7 +80,7 @@ def market_order(symbol, volume, order_type, deviation=0, magic=123993):
     return(order_result)
 
 
-def close_position(position, deviation=0, magic=123992):
+def close_position(position, deviation=0, magic=123994):
 
     order_type_dict = {
         0: mt5.ORDER_TYPE_SELL,
@@ -151,7 +151,7 @@ print(datetime.now(),
     '| Balance: ', account_info.balance,
     '| Equity: ' , account_info.equity)
 
-logging.info("Bot version v2c")
+logging.info("Bot version v2c mt5 data M5 magic=123994")
 #### RUN ONCE TO CREATE A RECORD.CSV FILE
 try:
     time_records = pd.read_csv('time_records_v2c.csv')

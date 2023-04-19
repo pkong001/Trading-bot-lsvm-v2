@@ -182,7 +182,7 @@ print(datetime.now(),
     '| Balance: ', account_info.balance,
     '| Equity: ' , account_info.equity)
 
-print("Bot version v2")
+print("Bot version v2 old historical magic 123992")
 #### RUN ONCE TO CREATE A RECORD.CSV FILE
 try:
     time_records = pd.read_csv('time_records_v2.csv')

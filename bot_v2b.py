@@ -42,7 +42,7 @@ def check_allowed_trading_hours():
         #market close
     return market_status
 
-def market_order(symbol, volume, order_type, deviation=0, magic=123992):
+def market_order(symbol, volume, order_type, deviation=0, magic=123993):
 
     order_type_dict = {
         'buy': mt5.ORDER_TYPE_BUY,
@@ -152,7 +152,7 @@ print(datetime.now(),
     '| Balance: ', account_info.balance,
     '| Equity: ' , account_info.equity)
 
-print("Bot version v2b")
+print("Bot version v2b mt5 historical H1 magic=123993")
 
 #### RUN ONCE TO CREATE A RECORD.CSV FILE
 try:
