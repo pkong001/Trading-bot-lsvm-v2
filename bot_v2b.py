@@ -265,7 +265,6 @@ while True:
                         log_flag1= True
                 elif abs(price_data[4] - current_candle[4]) <= deviation_delayed_trade:
                     logging.info("<<LONG>> Deviation = {0} >>> Making a trade".format((price_data[4] - current_candle[4])))
-                    log_flag1 = False
                     order_result = market_order(symbol, volume, 'buy')
                     if order_result.retcode == mt5.TRADE_RETCODE_DONE: # check if trading order is successful
                         logging.info("<<LONG>> Deviation = {0} >>> Made a trade at: {1}".format(abs(price_data[4] - current_candle[4]), time_trade))
