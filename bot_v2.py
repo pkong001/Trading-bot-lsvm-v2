@@ -140,24 +140,24 @@ def get_go():
     # Run git status command
     check_status = subprocess.check_output(['git', 'status'], stderr=subprocess.STDOUT)
     # Display the output of the Git status command
-    print(check_status.decode())
+    # print(check_status.decode())
 
     # Add all changes to the Git staging area
     subprocess.call(['git', 'add', '-A'])
 
     # Commit the changes with a commit message
     commit_msg = 'Updated at {timestamp}'.format(timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-    print(commit_msg)
+    #print(commit_msg)
     commit_output = subprocess.check_output(['git', 'commit', '-m', commit_msg], stderr=subprocess.STDOUT)
 
     # Display the output of the Git commit command
-    print(commit_output.decode())
+    #print(commit_output.decode())
 
     # Push the changes to the remote repository
     push_output = subprocess.check_output(['git', 'push', 'origin', 'main'], stderr=subprocess.STDOUT)
 
     # Display the output of the Git push command
-    print(push_output.decode())
+    #print(push_output.decode())
 
 symbol = 'XAUUSD'
 timeframe = mt5.TIMEFRAME_H1
