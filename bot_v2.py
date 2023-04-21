@@ -182,7 +182,7 @@ print(datetime.now(),
     '| Balance: ', account_info.balance,
     '| Equity: ' , account_info.equity)
 
-print("Bot version v2 old historical magic 123992")
+print("Bot version v2 old historical magic 123992 no push")
 #### RUN ONCE TO CREATE A RECORD.CSV FILE
 try:
     time_records = pd.read_csv('time_records_v2.csv')
@@ -365,13 +365,13 @@ while True:
     
 
     # This will push to git main every "running_count" loop
-    if (running_count % 3601) == 0:
-        try:
-            get_go()
-            logging.info("pushed to git")
-        except:
-            logging.info("cannot push")
-    running_count += 1
+    # if (running_count % 3601) == 0:
+    #     try:
+    #         get_go()
+    #         logging.info("pushed to git")
+    #     except:
+    #         logging.info("cannot push")
+    # running_count += 1
 
 
     time.sleep(0.5)
