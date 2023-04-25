@@ -13,18 +13,19 @@ import subprocess
 # To ignore error on sklearn version, which proved irrelevant
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
-    lsvm_long = pickle.load(open('lsvm_xauusd_long.pkl','rb'))
-    lsvm_short = pickle.load(open('lsvm_xauusd_short.pkl','rb'))
+    lsvm_long = pickle.load(open('lsvm_xauusd_long_b.pkl','rb'))
+    lsvm_short = pickle.load(open('lsvm_xauusd_short_b.pkl','rb'))
 
 # import Scaler
+# The scaler for long and short a train on the same data interval so we can use just one of them.
 from joblib import load
-scaler = load('scaler_long.pkl')
+scaler = load('scaler_long_b.pkl')
 
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s %(levelname)s %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
-    handlers=[logging.FileHandler('bot_log.log', mode='a'), logging.StreamHandler()]
+    handlers=[logging.FileHandler('bot_log_b.log', mode='a'), logging.StreamHandler()]
 )
 
 # Get the logger instance
@@ -41,7 +42,7 @@ def check_allowed_trading_hours():
         #market close
     return market_status
 
-def market_order(symbol, volume, order_type, deviation=0, magic=123992):
+def market_order(symbol, volume, order_type, deviation=0, magic=123993):
 
     order_type_dict = {
         'buy': mt5.ORDER_TYPE_BUY,
@@ -54,12 +55,12 @@ def market_order(symbol, volume, order_type, deviation=0, magic=123992):
     }
 
     if order_type == 'buy':
-        sl = mt5.symbol_info_tick(symbol).ask - (sl_price_range + spread) #เพิ่ม sl ขึ้น 1920 - (3 + 0.1)
-        tp = mt5.symbol_info_tick(symbol).ask + (tp_price_range + spread) #เพิ่ม tp  1920 + (3 + 0.1)
+        sl = mt5.symbol_info_tick(symbol).ask - (sl_price_range) # ไม่ต้องลบ เพราะเราเพิ่ม แค่ tp เพื่อที่จะเอา spread คืน
+        tp = mt5.symbol_info_tick(symbol).ask + (tp_price_range + spread)
     
     if order_type == 'sell':
-        sl = mt5.symbol_info_tick(symbol).bid + (sl_price_range + spread) #เหิ่ม sl
-        tp = mt5.symbol_info_tick(symbol).bid - (tp_price_range + spread) #เพิ่ม tp
+        sl = mt5.symbol_info_tick(symbol).bid + (sl_price_range) # ไม่ต้องบวก เพราะเราเพิ่ม แค่ tpห เพื่อที่จะเอา spread คืน
+        tp = mt5.symbol_info_tick(symbol).bid - (tp_price_range + spread)
 
     request = {
         "action": mt5.TRADE_ACTION_DEAL,
@@ -80,7 +81,7 @@ def market_order(symbol, volume, order_type, deviation=0, magic=123992):
     return(order_result)
 
 
-def close_position(position, deviation=0, magic=123992):
+def close_position(position, deviation=0, magic=123993):
 
     order_type_dict = {
         0: mt5.ORDER_TYPE_SELL,
@@ -128,41 +129,10 @@ def close_positions(order_type):
 
             logging.info('order_result: ', order_result)
 
-# Make change to the repository so we don't get an error when define commiting line
-import sys
-sys.path.insert(0,'current_time')
-from create_current_time import get_current_time
-get_current_time()
-
-
-# To run this function you have to work in the correct directory of git bash
-def get_go():
-    # Run git status command
-    check_status = subprocess.check_output(['git', 'status'], stderr=subprocess.STDOUT)
-    # Display the output of the Git status command
-    # print(check_status.decode())
-
-    # Add all changes to the Git staging area
-    subprocess.call(['git', 'add', '-A'])
-
-    # Commit the changes with a commit message
-    commit_msg = 'Updated at {timestamp}'.format(timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-    #print(commit_msg)
-    commit_output = subprocess.check_output(['git', 'commit', '-m', commit_msg], stderr=subprocess.STDOUT)
-
-    # Display the output of the Git commit command
-    #print(commit_output.decode())
-
-    # Push the changes to the remote repository
-    push_output = subprocess.check_output(['git', 'push', 'origin', 'main'], stderr=subprocess.STDOUT)
-
-    # Display the output of the Git push command
-    #print(push_output.decode())
-
 symbol = 'XAUUSD'
 timeframe = mt5.TIMEFRAME_H1
 volume = 0.01
-strategy_name = 'ML_lsvm'
+strategy_name = 'ML_lsvm_d'
 sl_price_range = 3
 tp_price_range = 3
 spread = .125
@@ -182,10 +152,11 @@ print(datetime.now(),
     '| Balance: ', account_info.balance,
     '| Equity: ' , account_info.equity)
 
-print("Bot version v2 old historical magic 123992 no push")
+print("Bot version v2b mt5 historical H1 magic=123993")
+
 #### RUN ONCE TO CREATE A RECORD.CSV FILE
 try:
-    time_records = pd.read_csv('time_records_v2.csv')
+    time_records = pd.read_csv('time_records_v2b.csv')
     logging.debug('Your already have a time_records file: CONTINUE')
 except:
     price_data = mt5.copy_rates_from_pos(symbol, timeframe, 0, 2)[0]
@@ -197,15 +168,12 @@ except:
 
     time_records = [time_trade]
     records_df = pd.DataFrame({'time_records': time_records})
-    records_df.to_csv('time_records_v2.csv', index = False)
+    records_df.to_csv('time_records_v2b.csv', index = False)
     logging.debug('Created a time_records file')
 
 time.sleep(2) # wait for server to start
 logging.debug('Running')
 
-# Define some variable before while loop begin
-    #This is for pushing go github
-running_count = 1
     #Flag for loggin
 log_flag1 = False
 log_flag2 = False
@@ -254,19 +222,18 @@ while True:
                 time_records['time_records'] = pd.to_datetime(time_records['time_records'], format='%Y-%m-%d %H:%M:%S')
                 rounded_time_records = time_records['time_records'].dt.floor('H')
 
-        # Prepare data for model to predict
-        data_raw = np.array([[open, high, low, close]]) # use this np.array instead of reshape
-        data_scaled = scaler.transform(data_raw)
 
-
-                # temp check
+        # 0-00000000000000000000temp check
         # if rounded_time_trade not in rounded_time_records.values:
         #     print("It's not in  SO LET TRADE")
         #     #print(rounded_time_trade)
         # else:
         #     print("It's in the recorded")
-        #     #print(rounded_time_trade)
+            #print(rounded_time_trade)
 
+        # Prepare data for model to predict
+        data_raw = np.array([[open, high, low, close]]) # use this np.array instead of reshape
+        data_scaled = scaler.transform(data_raw)
 
         ### Model LSVM BUY----------------------------------------------------------------
         if (rounded_time_trade not in rounded_time_records.values) and (num_positions <= 5):
@@ -289,17 +256,15 @@ while True:
                                                 'order price':['none'],
                                                 'prediction_s':[prediction_short]})
                 time_records = pd.concat([time_records, new_row], axis=0)
-                time_records.to_csv('time_records_v2.csv', index = False)
+                time_records.to_csv('time_records_v2b.csv', index = False)
                 log_flag3 = False
             if prediction_long == 1 and prediction_short == 0:
                 if abs(price_data[4] - current_candle[4]) > deviation_delayed_trade:
                     if not log_flag1:
                         logging.info("<<LONG>> Deviation = {0} >>> No Trade, close price is out of deviation, wait for completed candle in the next hour".format((price_data[4] - current_candle[4])))
-                        logging.info("Waiting for Deviation to fall in acceptable range")
-                        log_flag1 = True
+                        log_flag1= True
                 elif abs(price_data[4] - current_candle[4]) <= deviation_delayed_trade:
                     logging.info("<<LONG>> Deviation = {0} >>> Making a trade".format((price_data[4] - current_candle[4])))
-                    log_flag1 = False
                     order_result = market_order(symbol, volume, 'buy')
                     if order_result.retcode == mt5.TRADE_RETCODE_DONE: # check if trading order is successful
                         logging.info("<<LONG>> Deviation = {0} >>> Made a trade at: {1}".format(abs(price_data[4] - current_candle[4]), time_trade))
@@ -313,9 +278,9 @@ while True:
                                                 'order price':[order_result[4]],
                                                 'prediction_s':[prediction_short]})
                         time_records = pd.concat([time_records, new_row], axis=0) # love .append T.T
-                        time_records.to_csv('time_records_v2.csv', index = False) # record traded order by timestamp
-                        #HW RECORD OPEN HIGH LOW CLOSE, PREDICTION TO CS
+                        time_records.to_csv('time_records_v2b.csv', index = False) # record traded order by timestamp
                         log_flag3 = False
+                        #HW RECORD OPEN HIGH LOW CLOSE, PREDICTION TO CS
                     else:
                         "Sending order is not successful"
             
@@ -323,7 +288,6 @@ while True:
                 if abs(price_data[4] - current_candle[4]) > deviation_delayed_trade:
                     if not log_flag2:
                         logging.info("<<SHORT>> Deviation = {0} >>> No Trade, close price is out of deviation, wait for completed candle in the next hour".format((price_data[4] - current_candle[4])))
-                        logging.info("Waiting for Deviation to fall in acceptable range")
                         log_flag2 = True
                 elif abs(price_data[4] - current_candle[4]) <= deviation_delayed_trade:
                     logging.info("<<SHORT>> Deviation = {0} >>> Making a trade".format((price_data[4] - current_candle[4])))
@@ -341,13 +305,13 @@ while True:
                                                 'order price':[order_result[4]],
                                                 'prediction_s':[prediction_short]})
                         time_records = pd.concat([time_records, new_row], axis=0) # love .append T.T
-                        time_records.to_csv('time_records_v2.csv', index = False) # record traded order by timestamp
+                        time_records.to_csv('time_records_v2b.csv', index = False) # record traded order by timestamp
                         log_flag3 = False
                         #HW RECORD OPEN HIGH LOW CLOSE, PREDICTION TO CS
                     else:
                         "Sending order is not successful"
             if prediction_long == 0 and prediction_short == 0:
-                print('')
+                logging.info("")
                 new_row = pd.DataFrame({'time_records':[time_trade],
                                                 'open':[open],
                                                 'high':[high],
@@ -358,23 +322,13 @@ while True:
                                                 'order price':['none'],
                                                 'prediction_s':[prediction_short]})
                 time_records = pd.concat([time_records, new_row], axis=0)
-                time_records.to_csv('time_records_v2.csv', index = False)
+                time_records.to_csv('time_records_v2b.csv', index = False)
                 log_flag3 = False
     else:
         raise ValueError('Failed on Checking market status')
-    
-
-    # This will push to git main every "running_count" loop
-    # if (running_count % 3601) == 0:
-    #     try:
-    #         get_go()
-    #         logging.info("pushed to git")
-    #     except:
-    #         logging.info("cannot push")
-    # running_count += 1
 
 
-    time.sleep(0.5)
+    time.sleep(1)
         
 
 
