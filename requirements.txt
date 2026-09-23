@@ -4,6 +4,7 @@ datetime
 plotly
 requests
 ipykernel
-scikit-learn==1.2.2
-numpy==1.24.2
+scikit-learn
+numpy
 matplotlib
+python-dotenv
