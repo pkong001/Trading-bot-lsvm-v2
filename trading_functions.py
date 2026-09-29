@@ -1,6 +1,6 @@
 import MetaTrader5 as mt5
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import pickle
 import warnings
 from joblib import load
@@ -20,12 +20,11 @@ def initialize_mt5(LOGIN, PASSWORD, SERVER):
     )
 
 
-def initialize_trading_log(file_name, file_extension, symbol, timeframe):
+def initialize_trading_log(history_destination, symbol, timeframe):
     #### RUN ONCE TO CREATE A RECORD.CSV FILE
-    file_destination = f"{file_name}.{file_extension}"
     try:
-        trading_log = pd.read_csv(file_destination)
-        logging.info(f"Already have a trading log: {file_destination}")
+        trading_log = pd.read_csv(history_destination)
+        logging.info(f"Already have a trading log: {history_destination}")
         return trading_log
     except:
         price_data = mt5.copy_rates_from_pos(symbol, timeframe, 0, 2)[0]
@@ -34,6 +33,7 @@ def initialize_trading_log(file_name, file_extension, symbol, timeframe):
         low_price = price_data[3]
         close_price = price_data[4]
         time_trade = datetime.fromtimestamp(price_data[0])
+        time_trade = time_trade - timedelta(hours=1)
         time_trade_str = time_trade.strftime("%Y-%m-%d %H:%M:%S")
         time_trade_ts = pd.Timestamp(time_trade_str)
 
@@ -50,10 +50,10 @@ def initialize_trading_log(file_name, file_extension, symbol, timeframe):
         }
 
         trading_log = pd.DataFrame(data)
-        trading_log.to_csv(file_destination, index=False)
-        logging.info(f"Created a time_records file: {file_destination}")
-    logging.info(f"Trading log initialized: {file_destination}")
-    return trading_log
+        trading_log.to_csv(history_destination, index=False)
+        logging.info(f"Created a time_records file: {history_destination}")
+        logging.info(f"Trading log initialized: {history_destination}")
+        return trading_log
 
 
 def load_models(long_model, short_model):
@@ -130,57 +130,91 @@ def make_order(
     order_result = mt5.order_send(request)
     return order_result
 
+class OrderExecutor:
+    def __init__(
+        self,
+        strategy_name,
+        symbol,
+        volume,
+        deviation,
+        magic,
+        sl_price_range,
+        tp_price_range,
+        spread,
+    ):
+        self.strategy_name = strategy_name
+        self.symbol = symbol
+        self.volume = volume
+        self.deviation = deviation
+        self.magic = magic
+        self.sl_price_range = sl_price_range
+        self.tp_price_range = tp_price_range
+        self.spread = spread
 
-def close_position(position, deviation=0, magic=123993):
-
-    order_type_dict = {0: mt5.ORDER_TYPE_SELL, 1: mt5.ORDER_TYPE_BUY}
-
-    price_dict = {
-        0: mt5.symbol_info_tick(symbol).bid,
-        1: mt5.symbol_info_tick(symbol).ask,
-    }
-
-    request = {
-        "action": mt5.TRADE_ACTION_DEAL,
-        "position": position["ticket"],  # select the position you want to close
-        "symbol": symbol,
-        "volume": volume,  # FLOAT
-        "type": order_type_dict[position["type"]],
-        "price": price_dict[position["type"]],
-        "deviation": deviation,  # INTERGER
-        "magic": magic,  # INTERGER
-        "comment": strategy_name,
-        "type_time": mt5.ORDER_TIME_GTC,
-        "type_filling": mt5.ORDER_FILLING_IOC,
-    }
-
-    order_result = mt5.order_send(request)
-    return order_result
+    def execute_make_order(self, order_type):
+        return make_order(
+            strategy_name=self.strategy_name,
+            symbol=self.symbol,
+            volume=self.volume,
+            order_type=order_type,
+            deviation=self.deviation,
+            magic=self.magic,
+            sl_price_range=self.sl_price_range,
+            tp_price_range=self.tp_price_range,
+            spread=self.spread,
+        )
 
 
-def close_positions(order_type):
-    order_type_dict = {"buy": 0, "sell": 1}
+def close_all_positions(symbol, deviation=0, magic=123993):
+    # Fetch all active positions for the target symbol
+    positions = mt5.positions_get(symbol=symbol)
+    if len(positions) > 0:
+        logging.info(f"Found {len(positions)} active positions for {symbol}. Closing them now...")
 
-    if mt5.positions_total() > 0:
-        positions = mt5.positions_get()
+        # Loop through each position and close it
+        for position_i in positions:
+            ticket = position_i.ticket
+            volume = position_i.volume
+            pos_type = position_i.type  # 0 for BUY, 1 for SELL
+            current_tick = mt5.symbol_info_tick(symbol)
 
-        positions_df = pd.DataFrame(positions, columns=positions[0]._asdict().keys())
 
-        if order_type != "all":
-            positions_df = positions_df[
-                (positions_df["type"] == order_type_dict[order_type])
-            ]
+            # Determine opposite order type and correct execution price
+            if pos_type == mt5.POSITION_TYPE_BUY:
+                order_type = mt5.ORDER_TYPE_SELL
+                current_price = current_tick.bid
+            else:
+                order_type = mt5.ORDER_TYPE_BUY
+                current_price = current_tick.ask
 
-        for i, position in positions_df.iterrows():
-            order_result = close_position(position)
+            # Construct the close request
+            close_request = {
+                "action": mt5.TRADE_ACTION_DEAL,
+                "symbol": symbol,
+                "volume": volume,
+                "type": order_type,
+                "position": ticket,  # Ties this trade to the specific open position
+                "price": current_price,
+                "deviation": deviation,
+                "magic": magic,
+                "comment": "Python bulk close script",
+                "type_time": mt5.ORDER_TIME_GTC,
+                "type_filling": mt5.ORDER_FILLING_IOC,
+            }
 
-            logging.info("order_result: ", order_result)
+            # Send the order to the terminal
+            result = mt5.order_send(close_request)
+            
+            if result.retcode == mt5.TRADE_RETCODE_DONE:
+                logging.info(f"Successfully closed Position #{ticket} ({volume} lots)")
+            else:
+                logging.error(f"Failed to close Position #{ticket}. Error code: {result.retcode}")
+
 
 
 def record_trade(
     trading_log_df,
-    file_name,
-    file_extension,
+    history_destination,
     time_trade,
     open,
     high,
@@ -205,6 +239,5 @@ def record_trade(
         }
     )
     trading_log_df = pd.concat([trading_log_df, new_row], axis=0, ignore_index=True)
-    destination = f"{file_name}.{file_extension}"
-    trading_log_df.to_csv(destination, index=False)
+    trading_log_df.to_csv(history_destination, index=False)
     return trading_log_df
